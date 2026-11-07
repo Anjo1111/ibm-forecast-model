@@ -1,0 +1,619 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>IBM Forecast Model</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column — scenario bar, headline figures, charts, then levers beside the P&L. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #11151b; --ink-2: #4a515c; --muted: #858b94;
+  --line: #e2e5ea; --axis: #c3c7ce; --accent: #1f6fd1; --accent-wash: #e6effb;
+  --s-sw: #2a78d6; --s-co: #eb6834; --s-in: #1baf7a; --s-ot: #a3a8b0; --s-ini: #6250d6;
+  --good: #0a7a0a; --bad: #c43535;
+  --f-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1216; --panel: #171b21; --ink: #eef0f3; --ink-2: #b9bfc8; --muted: #858b94;
+  --line: #2a3038; --axis: #3a414b; --accent: #5a9cf0; --accent-wash: #1b2a40;
+  --s-sw: #3987e5; --s-co: #d95926; --s-in: #199e70; --s-ot: #6b717a; --s-ini: #9085e9;
+  --good: #3cc23c; --bad: #ec6b6b; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f1216; --panel: #171b21; --ink: #eef0f3; --ink-2: #b9bfc8; --muted: #858b94;
+  --line: #2a3038; --axis: #3a414b; --accent: #5a9cf0; --accent-wash: #1b2a40;
+  --s-sw: #3987e5; --s-co: #d95926; --s-in: #199e70; --s-ot: #6b717a; --s-ini: #9085e9;
+  --good: #3cc23c; --bad: #ec6b6b; color-scheme: dark; }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--f-sans); font-size: 14px; line-height: 1.45; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 22px; }
+h1 { font-size: 26px; font-weight: 600; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-size: 15px; font-weight: 600; margin: 0; }
+.sub { color: var(--ink-2); margin: 4px 0 0; max-width: 70ch; }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg button { font: inherit; font-weight: 500; border: 0; background: transparent; color: var(--ink-2); padding: 7px 16px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.seg button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ctrls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.btn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 7px 12px; border-radius: 7px; cursor: pointer; }
+.btn:hover { border-color: var(--axis); }
+.pill { font-family: var(--f-mono); font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--accent-wash); color: var(--accent); }
+.pill[hidden] { display: none; }
+
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.kpi { background: var(--panel); padding: 14px 16px; display: grid; gap: 2px; min-width: 0; }
+.kpi .v { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+.kpi .d { font-size: 12px; color: var(--ink-2); }
+.up { color: var(--good); } .down { color: var(--bad); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.charts { display: grid; grid-template-columns: 1.35fr 1fr; gap: 22px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: var(--f-sans); font-size: 11px; fill: var(--muted); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--panel); font-size: 12px; padding: 8px 10px; border-radius: 6px; min-width: 150px; z-index: 5; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+.tip b { font-weight: 600; } .tip .r { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+
+.main { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 22px; align-items: start; }
+.levers { display: grid; gap: 18px; }
+.group { display: grid; gap: 10px; }
+.group + .group { border-top: 1px solid var(--line); padding-top: 14px; }
+.gtitle { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+.gtitle i { width: 10px; height: 10px; border-radius: 2px; }
+.lever { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+.lever output { font-family: var(--f-mono); font-size: 12px; color: var(--ink); min-width: 56px; text-align: right; }
+.lever input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+.lever .hint { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+.row-in { display: grid; grid-template-columns: 1fr 96px; gap: 10px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+.row-in input[type=number] { font: inherit; font-family: var(--f-mono); font-size: 12px; width: 100%; box-sizing: border-box; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); text-align: right; }
+.toggle { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 15px; height: 15px; }
+
+.tbl-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 6px 10px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; position: sticky; left: 0; background: var(--panel); }
+thead th { font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--axis); font-family: var(--f-mono); font-size: 11.5px; }
+thead th.act { color: var(--ink-2); }
+tbody tr td { border-bottom: 1px solid var(--line); }
+tr.tot td { font-weight: 600; color: var(--ink); }
+tr.sub td { color: var(--muted); font-size: 11.5px; }
+tr.sub td:first-child { padding-left: 22px; }
+tr.sec td { padding-top: 14px; border-bottom: 0; font-family: var(--f-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+td.act, th.act { background: color-mix(in srgb, var(--bg) 60%, var(--panel)); }
+td .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 7px; }
+
+.ini-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
+.ini-out { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; align-self: start; }
+.ini-out div { background: var(--panel); padding: 12px 14px; }
+.ini-out .v { font-size: 20px; font-weight: 600; }
+.ini-out .l { font-size: 11.5px; color: var(--muted); }
+.ph { font-size: 12px; color: var(--ink-2); background: var(--accent-wash); padding: 8px 10px; border-radius: 6px; }
+
+.notes { font-size: 12px; color: var(--ink-2); display: grid; gap: 6px; max-width: 95ch; }
+.notes p { margin: 0; }
+.notes a { color: var(--accent); }
+
+.figs { display: grid; gap: 22px; }
+.figbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fig { width: 640px; max-width: 100%; box-sizing: border-box; background: #fff; border-color: #e2e5ea; }
+.figt { font-size: 13px; font-weight: 600; }
+body.figmode .wrap > :not(header):not(#figures) { display: none !important; }
+body.figmode header .ctrls { display: none; }
+@media (max-width: 960px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpis .kpi:last-child { grid-column: 1 / -1; }
+  .charts, .main, .ini-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: no-preference) { .bar { transition: y .25s, height .25s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">IPBS Case Challenge · IBM · FY2025A → 2030E · $bn</div>
+      <h1>IBM Forecast Model</h1>
+      <p class="sub">Segment-driven forecast. 2024–25 are actuals, 2026E is anchored to 9M actuals and guidance, and the scenarios diverge from 2027. Move the levers; everything updates.</p>
+    </div>
+    <div class="ctrls">
+      <div class="seg" role="group" aria-label="Scenario">
+        <button id="sc-best" data-sc="best">Best</button>
+        <button id="sc-base" data-sc="base" aria-pressed="true">Base</button>
+        <button id="sc-worst" data-sc="worst">Worst</button>
+      </div>
+      <span class="pill" id="edited" hidden>edited</span>
+      <button class="btn" id="reset">Reset scenario</button>
+      <a class="btn" id="fig-link" href="#figures" style="text-decoration:none">Paper figures</a>
+    </div>
+  </header>
+
+  <section id="figures" class="figs" aria-label="Figures for the paper" hidden>
+    <div class="figbar"><span class="eyebrow">Paper figures · fixed settings (base case, Exhibit 3 numbers), light theme · screenshot each white panel</span><a class="btn" href="#" style="text-decoration:none">Back to the model</a></div>
+    <div class="panel fig" id="fig-a1">
+      <div class="panel-head"><div class="legend" id="leg-a1"></div><span class="eyebrow">$bn</span></div>
+      <div class="chart" id="ch-a1"></div>
+    </div>
+    <div class="panel fig" id="fig-a2">
+      <div class="panel-head"><span class="eyebrow">$bn · before the program</span></div>
+      <div class="chart" id="ch-a2"></div>
+    </div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Headline figures"></section>
+
+  <section class="charts">
+    <div class="panel">
+      <div class="panel-head"><h2>Revenue by segment</h2><div class="legend" id="leg-rev"></div></div>
+      <div class="chart" id="ch-rev"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Free cash flow by scenario</h2><span class="eyebrow">selected scenario in bold</span></div>
+      <div class="chart" id="ch-fcf"></div>
+    </div>
+  </section>
+
+  <section class="main">
+    <div class="panel levers" aria-label="Assumptions">
+      <div class="panel-head" style="margin:0"><h2>Levers, 2027–30</h2><span class="eyebrow" id="lev-sc">Base</span></div>
+      <div class="group">
+        <div class="gtitle"><i style="background:var(--s-sw)"></i>Software</div>
+        <label class="lever">Growth p.a.<output id="o-sw-g"></output><input type="range" id="sw-g" min="-5" max="15" step="0.5"></label>
+        <label class="lever">Segment margin by 2030<output id="o-sw-m"></output><input type="range" id="sw-m" min="25" max="45" step="0.5"><span class="hint">FY25 33.1% · Q3 26 35.0%</span></label>
+      </div>
+      <div class="group">
+        <div class="gtitle"><i style="background:var(--s-co)"></i>Consulting</div>
+        <label class="lever">Growth p.a.<output id="o-co-g"></output><input type="range" id="co-g" min="-8" max="8" step="0.5"></label>
+        <label class="lever">Segment margin by 2030<output id="o-co-m"></output><input type="range" id="co-m" min="6" max="18" step="0.5"><span class="hint">FY25 11.7% · Q3 26 12.2%</span></label>
+      </div>
+      <div class="group">
+        <div class="gtitle"><i style="background:var(--s-in)"></i>Infrastructure</div>
+        <label class="lever">Trend growth p.a.<output id="o-in-g"></output><input type="range" id="in-g" min="-8" max="8" step="0.5"></label>
+        <label class="lever">Segment margin by 2030<output id="o-in-m"></output><input type="range" id="in-m" min="12" max="28" step="0.5"><span class="hint">FY25 22.0% (z17 peak) · Q3 26 19.3%</span></label>
+        <label class="toggle"><input type="checkbox" id="cycle"> Mainframe cycle (z18 launch ~2028)</label>
+      </div>
+      <div class="group">
+        <div class="gtitle">Cash &amp; valuation</div>
+        <label class="lever">FCF margin by 2030<output id="o-fcfm"></output><input type="range" id="fcfm" min="15" max="30" step="0.5"><span class="hint">FY25 21.8% · 2026E ~22.4%</span></label>
+        <label class="row-in">WACC (%)<input type="number" id="wacc" step="0.25" min="5" max="14"></label>
+        <label class="row-in">Terminal growth (%)<input type="number" id="tg" step="0.25" min="0" max="4"></label>
+        <label class="row-in">Tax rate, non-GAAP (%)<input type="number" id="tax" step="0.5" min="5" max="30"></label>
+        <label class="row-in">Share price today ($)<input type="number" id="price" step="1" min="50" max="600"></label>
+      </div>
+    </div>
+
+    <div class="panel" style="display:grid;gap:12px">
+      <div class="panel-head" style="margin:0"><h2>Income statement &amp; cash flow (non-GAAP)</h2><span class="eyebrow">$bn unless stated</span></div>
+      <div class="tbl-wrap"><table id="pl"></table></div>
+    </div>
+  </section>
+
+  <section class="panel" style="display:grid;gap:14px">
+    <div class="panel-head" style="margin:0">
+      <h2>Our program: return on investment</h2>
+      <label class="toggle"><input type="checkbox" id="ini-on"> Add our program to the forecast</label>
+    </div>
+    <div class="ph"><b>Program assumptions (paper, Exhibits 2–3):</b> $2bn invested over 2027–28, funded from the M&amp;A budget; revenue ramps to $3bn in 2030 (about one extra point of organic growth a year) at a 30% margin, between Consulting (~12%) and Software (~35%) because the offerings combine implementation with recurring subscriptions. Revenue counts only new offerings and new clients, on top of the base case.</div>
+    <div class="ini-grid">
+      <div class="levers" style="gap:10px">
+        <label class="row-in">Investment, $bn (spent over 2 yrs)<input type="number" id="ini-inv" step="0.1" min="0"></label>
+        <label class="row-in">Revenue at run-rate in 2030, $bn<input type="number" id="ini-rr" step="0.1" min="0"></label>
+        <label class="row-in">Margin on that revenue (%)<input type="number" id="ini-m" step="1" min="0" max="90"></label>
+        <label class="row-in">Start year<select id="ini-start" style="font:inherit;font-size:12px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)"><option>2027</option><option>2028</option></select></label>
+      </div>
+      <div class="ini-out" id="ini-out"></div>
+    </div>
+  </section>
+
+  <section class="panel" style="display:grid;gap:12px">
+    <div class="panel-head" style="margin:0">
+      <h2>Slide table: scenarios side by side</h2>
+      <button class="btn" id="copy">Copy table</button>
+    </div>
+    <div class="tbl-wrap"><table id="slide"></table></div>
+    <span class="eyebrow" id="copy-msg" aria-live="polite"></span>
+  </section>
+
+  <section class="notes">
+    <div class="eyebrow">How the model works</div>
+    <p><b>Revenue</b> = prior year × (1 + growth), by segment. 2026E growth is fixed for all scenarios (Software +8.5%, Consulting +1%, Infrastructure +2%), in line with 9M actuals and the 4–5% cc guidance. The mainframe-cycle switch adds −3 / +4 / +3 / −4 pp to Infrastructure growth in 2027–30, which nets to zero, so the trend slider stays the average.</p>
+    <p><b>Profit</b> = segment revenue × segment margin, with margins moving in a straight line from 2026E to the 2030 target. Corporate &amp; other costs are held at 5.3% of revenue, the level implied by FY25's 18.8% non-GAAP pre-tax margin. Shares stay flat at 953m diluted.</p>
+    <p><b>FCF</b> = revenue × FCF margin (2026E: $15.8bn, i.e. FY25 + &gt;$1bn per guidance). Dividends grow 1% a year from $6.3bn. <b>Value per share</b> discounts 2027–30 FCF plus a terminal value at the WACC, then subtracts $40bn core net debt ($63.8bn debt − $12.7bn financing debt − $11.1bn cash, Sept 2026).</p>
+    <p><b>Program ROI</b> = (after-tax profit 2027–30 − after-tax investment) ÷ after-tax investment. NPV includes a terminal value on the 2030 profit, so it shows the value of a business that keeps running past 2030.</p>
+    <p>Sources: IBM FY2024 and FY2025 annual reports; <a href="https://www.sec.gov/Archives/edgar/data/0000051143/000005114326000093/ibm-20261021xex991.htm">IBM Q3 2026 earnings release (8-K, 21 Oct 2026)</a>. FY2024 segment figures are rounded. Net income and EPS are model-derived on a non-GAAP basis, not reported figures.</p>
+  </section>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+
+<script>
+// ===== IBM forecast model (pure functions) =====
+const YEARS = [2024, 2025, 2026, 2027, 2028, 2029, 2030];
+const FC_YEARS = [2027, 2028, 2029, 2030];
+const SEGS = ["sw", "co", "in", "ot"];
+const SEG_NAMES = { sw: "Software", co: "Consulting", in: "Infrastructure", ot: "Financing & other", ini: "Our program" };
+
+// Actuals (IBM 10-K FY2024 / FY2025, $bn) and 2026E anchor (9M actuals + guidance)
+const ACT = {
+  2024: { rev: { sw: 27.1, co: 20.7, in: 14.0, ot: 0.7 }, pretaxMargin: 0.178, fcf: 12.7 },
+  2025: { rev: { sw: 30.0, co: 21.1, in: 15.7, ot: 0.7 }, mgn: { sw: 0.331, co: 0.117, in: 0.220, ot: 0.56 }, fcf: 14.7 },
+};
+const ANCHOR_2026 = {
+  g: { sw: 0.085, co: 0.010, in: 0.020, ot: 0.0 },
+  mgn: { sw: 0.345, co: 0.120, in: 0.190, ot: 0.56 },
+  fcf: 15.8,
+};
+const CYCLE = { 2027: -0.03, 2028: 0.04, 2029: 0.03, 2030: -0.04 }; // IBM Z cycle overlay, sums to 0
+const FIXED = { corpPct: 0.053, shares: 0.953, netDebt: 40.0, div2025: 6.3, divGrowth: 0.01 };
+
+const PRESETS = {
+  best:  { sw: { g: 0.100, m: 0.380 }, co: { g: 0.040, m: 0.145 }, in: { g: 0.030, m: 0.220 }, fcfM: 0.255 },
+  base:  { sw: { g: 0.070, m: 0.360 }, co: { g: 0.015, m: 0.130 }, in: { g: 0.010, m: 0.200 }, fcfM: 0.235 },
+  worst: { sw: { g: 0.040, m: 0.320 }, co: { g: -0.020, m: 0.100 }, in: { g: -0.020, m: 0.170 }, fcfM: 0.200 },
+};
+const GLOBAL_DEFAULTS = { tax: 0.13, wacc: 0.08, tg: 0.02, price: 253, cycle: true };
+const INI_DEFAULTS = { on: false, invest: 2.0, runRate: 3.0, margin: 0.30, start: 2027 };
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+function runModel(sc, gl, ini) {
+  const out = {};
+  // revenue & margins
+  for (const y of YEARS) {
+    const r = { rev: {}, prof: {}, mgn: {} };
+    if (y <= 2025) {
+      Object.assign(r.rev, ACT[y].rev);
+    } else if (y === 2026) {
+      for (const s of SEGS) r.rev[s] = out[2025].rev[s] * (1 + ANCHOR_2026.g[s]);
+    } else {
+      for (const s of SEGS) {
+        let g = s === "ot" ? 0 : sc[s].g;
+        if (s === "in" && gl.cycle) g += CYCLE[y];
+        r.rev[s] = out[y - 1].rev[s] * (1 + g);
+      }
+    }
+    // margins
+    if (y === 2025) Object.assign(r.mgn, ACT[2025].mgn);
+    if (y === 2026) Object.assign(r.mgn, ANCHOR_2026.mgn);
+    if (y >= 2027) {
+      const t = (y - 2026) / 4;
+      for (const s of SEGS) r.mgn[s] = s === "ot" ? ANCHOR_2026.mgn.ot : lerp(ANCHOR_2026.mgn[s], sc[s].m, t);
+    }
+    // initiative
+    r.rev.ini = 0; r.iniProfit = 0; r.iniInvest = 0;
+    if (ini.on && y >= 2027) {
+      const span = 2030 - ini.start; // years to reach run-rate
+      const k = span <= 0 ? 1 : Math.max(0, Math.min(1, (y - ini.start) / span));
+      r.rev.ini = ini.runRate * k;
+      r.iniProfit = r.rev.ini * ini.margin;
+      r.iniInvest = (y === ini.start || y === ini.start + 1) ? ini.invest / 2 : 0;
+    }
+    r.total = SEGS.reduce((a, s) => a + r.rev[s], 0) + r.rev.ini;
+    out[y] = r;
+  }
+  // P&L, FCF
+  for (const y of YEARS) {
+    const r = out[y];
+    r.growth = y > 2024 ? r.total / out[y - 1].total - 1 : null;
+    if (y === 2024) {
+      r.pretax = r.total * ACT[2024].pretaxMargin; r.fcf = ACT[2024].fcf;
+      r.segProfit = null; r.corp = null; r.net = null; r.eps = null;
+    } else {
+      for (const s of SEGS) r.prof[s] = r.rev[s] * r.mgn[s];
+      r.segProfit = SEGS.reduce((a, s) => a + r.prof[s], 0);
+      r.corp = -FIXED.corpPct * (r.total - r.rev.ini);
+      r.pretax = r.segProfit + r.corp + r.iniProfit - r.iniInvest;
+      r.taxAmt = -r.pretax * gl.tax;
+      r.net = r.pretax + r.taxAmt;
+      r.eps = r.net / FIXED.shares;
+      // FCF
+      let coreFcf;
+      if (y === 2025) coreFcf = ACT[2025].fcf;
+      else if (y === 2026) coreFcf = ANCHOR_2026.fcf;
+      else {
+        const m26 = ANCHOR_2026.fcf / out[2026].total;
+        const t = (y - 2026) / 4;
+        coreFcf = (r.total - r.rev.ini) * lerp(m26, sc.fcfM, t);
+      }
+      r.iniFcf = (r.iniProfit - r.iniInvest) * (1 - gl.tax);
+      r.fcf = coreFcf + r.iniFcf;
+    }
+    r.pretaxMargin = r.pretax / r.total;
+    r.fcfMargin = r.fcf / r.total;
+    r.div = y >= 2025 ? FIXED.div2025 * Math.pow(1 + FIXED.divGrowth, y - 2025) : null;
+    r.fcfAfterDiv = r.div != null ? r.fcf - r.div : null;
+  }
+  // valuation: value today ≈ start of 2027
+  let pv = 0;
+  FC_YEARS.forEach((y, i) => { pv += out[y].fcf / Math.pow(1 + gl.wacc, i + 1); });
+  const tv = out[2030].fcf * (1 + gl.tg) / (gl.wacc - gl.tg);
+  const pvTv = tv / Math.pow(1 + gl.wacc, 4);
+  const ev = pv + pvTv;
+  const equity = ev - FIXED.netDebt;
+  const perShare = equity / FIXED.shares;
+  const cumFcf = [2026, 2027, 2028, 2029, 2030].reduce((a, y) => a + out[y].fcf, 0);
+  const cagr = Math.pow(out[2030].total / out[2025].total, 1 / 5) - 1;
+  // initiative ROI (standalone, after tax)
+  const iniCash = FC_YEARS.map(y => (out[y].iniProfit - out[y].iniInvest) * (1 - gl.tax));
+  const iniProfitAT = FC_YEARS.reduce((a, y) => a + out[y].iniProfit * (1 - gl.tax), 0);
+  const iniInvAT = ini.invest * (1 - gl.tax);
+  let iniNpv = 0; iniCash.forEach((c, i) => { iniNpv += c / Math.pow(1 + gl.wacc, i + 1); });
+  const iniTv = (out[2030].iniProfit * (1 - gl.tax)) * (1 + gl.tg) / (gl.wacc - gl.tg) / Math.pow(1 + gl.wacc, 4);
+  let cum = 0, payback = null;
+  FC_YEARS.forEach((y, i) => { cum += iniCash[i]; if (payback == null && cum >= 0 && i > 0) payback = y; });
+  return {
+    years: out, cagr, cumFcf, ev, equity, perShare, pvTv, tvShare: pvTv / ev,
+    upside: perShare / gl.price - 1,
+    ini: { roi: iniInvAT > 0 ? (iniProfitAT - iniInvAT) / iniInvAT : null, npv: iniNpv + iniTv, npvNoTv: iniNpv, payback, perShare: (iniNpv + iniTv) / FIXED.shares },
+  };
+}
+
+// standalone initiative calc regardless of the "include" toggle
+function runInitiative(sc, gl, ini) { return runModel(sc, gl, Object.assign({}, ini, { on: true })).ini; }
+
+
+
+// ===== UI =====
+const state = {
+  sc: "base",
+  inputs: JSON.parse(JSON.stringify(PRESETS)),
+  gl: Object.assign({}, GLOBAL_DEFAULTS),
+  ini: Object.assign({}, INI_DEFAULTS),
+};
+const $ = id => document.getElementById(id);
+const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+const bn = (v, d = 1) => (v < 0 ? "−" : "") + "$" + Math.abs(v).toFixed(d) + "bn";
+const n1 = v => v == null ? "–" : (v < 0 ? "(" + Math.abs(v).toFixed(1) + ")" : v.toFixed(1));
+const SC_LABEL = { best: "Best", base: "Base", worst: "Worst" };
+const COL = s => getComputedStyle(document.documentElement).getPropertyValue(s).trim();
+
+function bindLevers() {
+  const map = [["sw-g", "sw", "g"], ["sw-m", "sw", "m"], ["co-g", "co", "g"], ["co-m", "co", "m"], ["in-g", "in", "g"], ["in-m", "in", "m"]];
+  for (const [id, s, k] of map) $(id).addEventListener("input", e => { state.inputs[state.sc][s][k] = +e.target.value / 100; render(); });
+  $("fcfm").addEventListener("input", e => { state.inputs[state.sc].fcfM = +e.target.value / 100; render(); });
+  $("cycle").addEventListener("change", e => { state.gl.cycle = e.target.checked; render(); });
+  for (const id of ["wacc", "tg", "tax"]) $(id).addEventListener("input", e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { state.gl[id] = v / 100; render(); } });
+  $("price").addEventListener("input", e => { const v = parseFloat(e.target.value); if (v > 0) { state.gl.price = v; render(); } });
+  $("ini-on").addEventListener("change", e => { state.ini.on = e.target.checked; render(); });
+  $("ini-inv").addEventListener("input", e => { const v = parseFloat(e.target.value); if (v >= 0) { state.ini.invest = v; render(); } });
+  $("ini-rr").addEventListener("input", e => { const v = parseFloat(e.target.value); if (v >= 0) { state.ini.runRate = v; render(); } });
+  $("ini-m").addEventListener("input", e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { state.ini.margin = v / 100; render(); } });
+  $("ini-start").addEventListener("change", e => { state.ini.start = +e.target.value; render(); });
+  document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => { state.sc = b.dataset.sc; syncInputs(); render(); }));
+  $("reset").addEventListener("click", () => { state.inputs[state.sc] = JSON.parse(JSON.stringify(PRESETS[state.sc])); syncInputs(); render(); });
+  $("copy").addEventListener("click", copySlide);
+}
+
+function syncInputs() {
+  const s = state.inputs[state.sc];
+  $("sw-g").value = s.sw.g * 100; $("sw-m").value = s.sw.m * 100;
+  $("co-g").value = s.co.g * 100; $("co-m").value = s.co.m * 100;
+  $("in-g").value = s.in.g * 100; $("in-m").value = s.in.m * 100;
+  $("fcfm").value = s.fcfM * 100; $("cycle").checked = state.gl.cycle;
+  $("wacc").value = +(state.gl.wacc * 100).toFixed(2); $("tg").value = +(state.gl.tg * 100).toFixed(2);
+  $("tax").value = +(state.gl.tax * 100).toFixed(1); $("price").value = state.gl.price;
+  $("ini-on").checked = state.ini.on; $("ini-inv").value = state.ini.invest; $("ini-rr").value = state.ini.runRate;
+  $("ini-m").value = +(state.ini.margin * 100).toFixed(1); $("ini-start").value = state.ini.start;
+}
+
+function sgn(v, d = 1) { return (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(d) + "%"; }
+
+function render() {
+  const s = state.inputs[state.sc];
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.sc === state.sc));
+  $("lev-sc").textContent = SC_LABEL[state.sc] + " case";
+  $("edited").hidden = JSON.stringify(s) === JSON.stringify(PRESETS[state.sc]);
+  $("o-sw-g").textContent = sgn(s.sw.g); $("o-sw-m").textContent = pct(s.sw.m);
+  $("o-co-g").textContent = sgn(s.co.g); $("o-co-m").textContent = pct(s.co.m);
+  $("o-in-g").textContent = sgn(s.in.g); $("o-in-m").textContent = pct(s.in.m);
+  $("o-fcfm").textContent = pct(s.fcfM);
+
+  const r = runModel(s, state.gl, state.ini);
+  const runs = {};
+  for (const k of ["best", "base", "worst"]) runs[k] = k === state.sc ? r : runModel(state.inputs[k], state.gl, state.ini);
+  renderKpis(r); renderRev(r); renderFcf(runs); renderPL(r); renderIni(); renderSlide();
+}
+
+function renderKpis(r) {
+  const y = r.years;
+  const up = r.upside;
+  $("kpis").innerHTML = [
+    ["Revenue 2030E", bn(y[2030].total), "CAGR 2025–30 " + sgn(r.cagr)],
+    ["Pre-tax margin 2030E", pct(y[2030].pretaxMargin), "FY25 " + pct(y[2025].pretaxMargin) + " · " + sgn(y[2030].pretaxMargin - y[2025].pretaxMargin).replace("%", "pp")],
+    ["EPS 2030E", "$" + y[2030].eps.toFixed(2), "2026E $" + y[2026].eps.toFixed(2) + " · CAGR " + sgn(Math.pow(y[2030].eps / y[2026].eps, 1 / 4) - 1)],
+    ["Cumulative FCF 2026–30E", bn(r.cumFcf, 0), "after dividends " + bn(r.cumFcf - [2026, 2027, 2028, 2029, 2030].reduce((a, k) => a + y[k].div, 0), 0)],
+    ["Value per share", "$" + r.perShare.toFixed(0), `<span class="${up >= 0 ? "up" : "down"}">${up >= 0 ? "▲" : "▼"} ${sgn(up, 0)}</span> vs $${state.gl.price} today`],
+  ].map(([l, v, d]) => `<div class="kpi"><span class="eyebrow">${l}</span><span class="v num">${v}</span><span class="d num">${d}</span></div>`).join("");
+}
+
+// ---- tooltip helpers
+function showTip(html, evt, host) {
+  const t = $("tip"); t.innerHTML = html; t.hidden = false;
+  const W = window.innerWidth, tw = t.offsetWidth, th = t.offsetHeight;
+  let x = evt.clientX + 14, yy = evt.clientY - th - 10;
+  if (x + tw > W - 8) x = evt.clientX - tw - 14;
+  if (yy < 8) yy = evt.clientY + 14;
+  t.style.position = "fixed"; t.style.left = x + "px"; t.style.top = yy + "px";
+}
+function hideTip() { $("tip").hidden = true; }
+
+function niceMax(v) { const steps = [10, 20, 25, 50]; const p = Math.pow(10, Math.floor(Math.log10(v)) - 1); for (const s of [1, 2, 2.5, 5, 10]) { const st = s * p * 10; if (Math.ceil(v / st) <= 5) return { max: Math.ceil(v / st) * st, step: st }; } return { max: v, step: v / 5 }; }
+
+function renderRev(r, o = {}) {
+  const chartId = o.chart || "ch-rev", legId = o.legend || "leg-rev", withIni = o.ini != null ? o.ini : state.ini.on;
+  const segs = ["sw", "co", "in", "ot"].concat(withIni ? ["ini"] : []);
+  const colors = { sw: "--s-sw", co: "--s-co", in: "--s-in", ot: "--s-ot", ini: "--s-ini" };
+  $(legId).innerHTML = segs.map(s => `<span><i style="background:var(${colors[s]})"></i>${SEG_NAMES[s]}</span>`).join("");
+  const W = 640, H = 300, L = 40, R = 8, T = 18, B = 26;
+  const maxV = Math.max(...YEARS.map(y => r.years[y].total));
+  const { max, step } = niceMax(maxV * 1.04);
+  const sx = (W - L - R) / YEARS.length, bw = sx * 0.58;
+  const sy = v => T + (H - T - B) * (1 - v / max);
+  let g = "";
+  for (let v = 0; v <= max + 1e-9; v += step) g += `<line x1="${L}" x2="${W - R}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(${v === 0 ? "--axis" : "--line"})" stroke-width="1"/><text x="${L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
+  YEARS.forEach((y, i) => {
+    const x = L + sx * i + (sx - bw) / 2; let acc = 0; const d = r.years[y];
+    const visible = segs.filter(s => d.rev[s] > 0.001);
+    visible.forEach((s, j) => {
+      const v = d.rev[s]; const y0 = sy(acc), y1 = sy(acc + v); acc += v;
+      const gap = j > 0 ? 1 : 0; const h = Math.max(0, y0 - y1 - gap);
+      const top = j === visible.length - 1;
+      g += top
+        ? `<path class="bar" d="M${x},${y0 - gap} V${y1 + 4} Q${x},${y1} ${x + 4},${y1} H${x + bw - 4} Q${x + bw},${y1} ${x + bw},${y1 + 4} V${y0 - gap} Z" fill="var(${colors[s]})"/>`
+        : `<rect class="bar" x="${x}" y="${y1}" width="${bw}" height="${h}" fill="var(${colors[s]})"/>`;
+    });
+    g += `<text x="${x + bw / 2}" y="${sy(d.total) - 6}" text-anchor="middle" style="fill:var(--ink-2);font-weight:500">${d.total.toFixed(1)}</text>`;
+    g += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle" style="fill:var(${y <= 2025 ? "--ink-2" : "--muted"})">${y}${y <= 2025 ? "A" : "E"}</text>`;
+    g += `<rect x="${L + sx * i}" y="${T}" width="${sx}" height="${H - T - B}" fill="transparent" data-y="${y}" class="hit"/>`;
+  });
+  g += `<line x1="${L + sx * 2}" x2="${L + sx * 2}" y1="${T - 8}" y2="${H - B}" stroke="var(--axis)" stroke-dasharray="3 3"/><text x="${L + sx * 2 + 4}" y="${T - 2}">forecast →</text>`;
+  $(chartId).innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stacked bar chart of IBM revenue by segment, 2024 to 2030">${g}</svg>`;
+  $(chartId).querySelectorAll(".hit").forEach(h => {
+    h.addEventListener("mousemove", e => {
+      const y = +h.dataset.y, d = r.years[y];
+      showTip(`<b>${y}${y <= 2025 ? "A" : "E"}</b>` + segs.map(s => `<div class="r"><span>${SEG_NAMES[s]}</span><span>${d.rev[s].toFixed(1)}</span></div>`).join("") +
+        `<div class="r" style="border-top:1px solid rgba(255,255,255,.2);margin-top:4px;padding-top:4px"><b>Total</b><b>${d.total.toFixed(1)}</b></div>` +
+        (d.growth != null ? `<div class="r"><span>Growth</span><span>${sgn(d.growth)}</span></div>` : ""), e);
+    });
+    h.addEventListener("mouseleave", hideTip);
+  });
+}
+
+function renderFcf(runs, o = {}) {
+  const chartId = o.chart || "ch-fcf", selSc = o.sel || state.sc;
+  const W = 460, H = 300, L = 36, R = 92, T = 18, B = 26;
+  const all = Object.values(runs).flatMap(r => YEARS.map(y => r.years[y].fcf));
+  const lo = Math.floor(Math.min(...all) / 5) * 5 - 0, { max, step } = niceMax(Math.max(...all) * 1.05);
+  const min = Math.max(0, lo - 5);
+  const sx = i => L + (W - L - R) * i / (YEARS.length - 1);
+  const sy = v => T + (H - T - B) * (1 - (v - min) / (max - min));
+  let g = "";
+  for (let v = min; v <= max + 1e-9; v += 5) g += `<line x1="${L}" x2="${W - R}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(${v === min ? "--axis" : "--line"})"/><text x="${L - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
+  YEARS.forEach((y, i) => { g += `<text x="${sx(i)}" y="${H - 8}" text-anchor="middle" style="fill:var(${y <= 2025 ? "--ink-2" : "--muted"})">${String(y).slice(2)}${y <= 2025 ? "A" : "E"}</text>`; });
+  const order = ["best", "base", "worst"].sort((a, b) => (a === selSc) - (b === selSc));
+  const labels = [];
+  for (const k of order) {
+    const r = runs[k], sel = k === selSc;
+    const pts = YEARS.map((y, i) => `${sx(i)},${sy(r.years[y].fcf)}`).join(" ");
+    g += `<polyline points="${pts}" fill="none" stroke="var(${sel ? "--ink" : "--muted"})" stroke-width="${sel ? 2.5 : 1.5}" stroke-dasharray="${sel ? "" : (k === "best" ? "5 4" : "2 3")}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    const last = r.years[2030].fcf;
+    g += `<circle cx="${sx(6)}" cy="${sy(last)}" r="${sel ? 4 : 3}" fill="var(${sel ? "--ink" : "--muted"})" stroke="var(--panel)" stroke-width="2"/>`;
+    labels.push({ k, y: sy(last), v: last, sel });
+  }
+  // de-collide end labels
+  labels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 15) labels[i].y = labels[i - 1].y + 15;
+  for (const l of labels) g += `<text x="${sx(6) + 9}" y="${l.y + 4}" style="fill:var(${l.sel ? "--ink" : "--ink-2"});font-weight:${l.sel ? 600 : 400}">${SC_LABEL[l.k]} ${l.v.toFixed(1)}</text>`;
+  g += `<line class="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--axis)" visibility="hidden"/>`;
+  g += `<rect x="${L - 10}" y="${T}" width="${W - L - R + 20}" height="${H - T - B}" fill="transparent" class="fcf-hit"/>`;
+  $(chartId).innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Line chart of free cash flow by scenario, 2024 to 2030">${g}</svg>`;
+  const svg = $(chartId).querySelector("svg"), hit = svg.querySelector(".fcf-hit"), xh = svg.querySelector(".xh");
+  hit.addEventListener("mousemove", e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const i = Math.max(0, Math.min(6, Math.round((p.x - L) / ((W - L - R) / 6)))), y = YEARS[i];
+    xh.setAttribute("x1", sx(i)); xh.setAttribute("x2", sx(i)); xh.setAttribute("visibility", "visible");
+    showTip(`<b>FCF ${y}${y <= 2025 ? "A" : "E"}</b>` + ["best", "base", "worst"].map(k => `<div class="r"><span>${SC_LABEL[k]}</span><span>${runs[k].years[y].fcf.toFixed(1)} · ${pct(runs[k].years[y].fcfMargin)}</span></div>`).join(""), e);
+  });
+  hit.addEventListener("mouseleave", () => { hideTip(); xh.setAttribute("visibility", "hidden"); });
+}
+
+function renderPL(r) {
+  const y = r.years;
+  const head = `<thead><tr><th></th>${YEARS.map(k => `<th class="${k <= 2025 ? "act" : ""}">${k}${k <= 2025 ? "A" : "E"}</th>`).join("")}</tr></thead>`;
+  const row = (label, fn, cls = "", sw = "") => `<tr class="${cls}"><td>${sw ? `<span class="sw" style="background:var(${sw})"></span>` : ""}${label}</td>${YEARS.map(k => `<td class="${k <= 2025 ? "act" : ""}">${fn(y[k], k)}</td>`).join("")}</tr>`;
+  const g = (d, k, s) => k === 2024 ? "–" : sgn(d.rev[s] / y[k - 1].rev[s] - 1);
+  const m = (d, s) => d.mgn[s] != null ? pct(d.mgn[s]) : "–";
+  let rows = "";
+  rows += `<tr class="sec"><td colspan="8">Revenue</td></tr>`;
+  for (const [s, c] of [["sw", "--s-sw"], ["co", "--s-co"], ["in", "--s-in"], ["ot", "--s-ot"]]) {
+    rows += row(SEG_NAMES[s], d => n1(d.rev[s]), "", c);
+    if (s !== "ot") rows += row("growth", (d, k) => g(d, k, s), "sub");
+  }
+  if (state.ini.on) rows += row("Our program", (d, k) => k < 2027 ? "–" : n1(d.rev.ini), "", "--s-ini");
+  rows += row("Total revenue", d => n1(d.total), "tot");
+  rows += row("growth", d => d.growth == null ? "–" : sgn(d.growth), "sub");
+  rows += `<tr class="sec"><td colspan="8">Profit</td></tr>`;
+  for (const s of ["sw", "co", "in"]) rows += row(SEG_NAMES[s] + " profit", d => d.prof[s] != null ? n1(d.prof[s]) : "–") + row("margin", d => m(d, s), "sub");
+  rows += row("Financing & other profit", d => d.prof.ot != null ? n1(d.prof.ot) : "–");
+  if (state.ini.on) rows += row("Program profit − investment", (d, k) => k < 2027 ? "–" : n1(d.iniProfit - d.iniInvest));
+  rows += row("Corporate & other costs", d => n1(d.corp));
+  rows += row("Pre-tax income", d => n1(d.pretax), "tot");
+  rows += row("margin", d => pct(d.pretaxMargin), "sub");
+  rows += row("Tax", d => d.taxAmt != null ? n1(d.taxAmt) : "–");
+  rows += row("Net income", d => n1(d.net), "tot");
+  rows += row("EPS, diluted ($)", d => d.eps != null ? d.eps.toFixed(2) : "–");
+  rows += `<tr class="sec"><td colspan="8">Cash</td></tr>`;
+  rows += row("Free cash flow", d => n1(d.fcf), "tot");
+  rows += row("FCF margin", d => pct(d.fcfMargin), "sub");
+  rows += row("Dividends", d => d.div != null ? n1(-d.div) : "–");
+  rows += row("FCF after dividends", d => d.fcfAfterDiv != null ? n1(d.fcfAfterDiv) : "–");
+  rows += row("room for M&A / deleveraging", () => "", "sub");
+  $("pl").innerHTML = head + "<tbody>" + rows.replace(/<tr class="sub"><td>room for M&A \/ deleveraging<\/td>.*?<\/tr>/, "") + "</tbody>";
+}
+
+function renderIni() {
+  const i = runInitiative(state.inputs[state.sc], state.gl, state.ini);
+  const fmtRoi = i.roi == null ? "–" : sgn(i.roi, 0);
+  $("ini-out").innerHTML = [
+    ["ROI 2027–30, after tax", fmtRoi, i.roi != null && i.roi < 0 ? "down" : "up"],
+    ["NPV incl. terminal value", bn(i.npv), i.npv < 0 ? "down" : "up"],
+    ["Payback year", i.payback ? String(i.payback) : "after 2030", ""],
+    ["Value per IBM share", (i.perShare < 0 ? "−$" : "+$") + Math.abs(i.perShare).toFixed(1), i.perShare < 0 ? "down" : "up"],
+  ].map(([l, v, c]) => `<div><div class="l">${l}</div><div class="v num ${c}">${v}</div></div>`).join("");
+}
+
+function slideData() {
+  const rows = [["", "Worst", "Base", "Best"]];
+  const runs = {}; for (const k of ["worst", "base", "best"]) runs[k] = runModel(state.inputs[k], state.gl, Object.assign({}, state.ini));
+  const add = (l, f) => rows.push([l, ...["worst", "base", "best"].map(k => f(runs[k], state.inputs[k]))]);
+  add("Software growth p.a. 2027–30", (r, s) => sgn(s.sw.g));
+  add("Consulting growth p.a. 2027–30", (r, s) => sgn(s.co.g));
+  add("Infrastructure growth p.a. 2027–30", (r, s) => sgn(s.in.g));
+  add("Revenue 2030E", r => bn(r.years[2030].total));
+  add("Revenue CAGR 2025–30", r => sgn(r.cagr));
+  add("Pre-tax margin 2030E", r => pct(r.years[2030].pretaxMargin));
+  add("EPS 2030E", r => "$" + r.years[2030].eps.toFixed(2));
+  add("FCF 2030E", r => bn(r.years[2030].fcf));
+  add("Cumulative FCF 2026–30E", r => bn(r.cumFcf, 0));
+  add("Value per share", r => "$" + r.perShare.toFixed(0));
+  add("vs. share price today", r => sgn(r.upside, 0));
+  return rows;
+}
+function renderSlide() {
+  const rows = slideData();
+  $("slide").innerHTML = `<thead><tr>${rows[0].map((h, i) => `<th>${h}</th>`).join("")}</tr></thead><tbody>` +
+    rows.slice(1).map((r, i) => `<tr class="${i === 3 || i === 9 ? "tot" : ""}">${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("") + "</tbody>";
+}
+function copySlide() {
+  const text = slideData().map(r => r.join("\t")).join("\n");
+  const done = () => { $("copy-msg").textContent = "Copied. Paste into a PowerPoint or Word table."; setTimeout(() => $("copy-msg").textContent = "", 3000); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+  function fallback() { const r = document.createRange(); r.selectNodeContents($("slide")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("copy-msg").textContent = "Table selected. Press Ctrl+C to copy."; }
+}
+
+function renderFigures() {
+  // Fixed settings so the paper always shows the same numbers as Exhibit 3, whatever the levers say.
+  const gl = Object.assign({}, GLOBAL_DEFAULTS), withProg = Object.assign({}, INI_DEFAULTS, { on: true }), noProg = Object.assign({}, INI_DEFAULTS, { on: false });
+  renderRev(runModel(PRESETS.base, gl, withProg), { chart: "ch-a1", legend: "leg-a1", ini: true });
+  const runs = {}; for (const k of ["best", "base", "worst"]) runs[k] = runModel(PRESETS[k], gl, noProg);
+  renderFcf(runs, { chart: "ch-a2", sel: "base" });
+}
+function applyMode() {
+  const on = location.hash === "#figures";
+  document.body.classList.toggle("figmode", on); $("figures").hidden = !on;
+  if (on) { document.documentElement.dataset.theme = "light"; renderFigures(); } else { delete document.documentElement.dataset.theme; render(); }
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", applyMode);
+bindLevers(); syncInputs(); render(); applyMode();
+</script>
+
+</body></html>
